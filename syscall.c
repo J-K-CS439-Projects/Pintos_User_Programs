@@ -66,7 +66,7 @@ getFile (int fd)
 }
 
 static void
-userprog_halt ()
+user_halt ()
 {
 	shutdown_power_off ();
 }
@@ -74,7 +74,7 @@ userprog_halt ()
 /* Terminate the user program currently running and save the exit
 * status into the current user program for a waiting parent */
 static void
-userprog_exit (int status)
+user_exit (int status)
 {
   thread_current ()->exit_status = status;
 	thread_exit ();
@@ -83,7 +83,7 @@ userprog_exit (int status)
 /* Runs the executable whose name is given in cmd_line, passing
 * any given arguments, and returns the new process's program id */
 static pid_t
-userprog_exec (const char *cmd_line)
+user_exec (const char *cmd_line)
 {
   if(!verify_pointer(cmd_line)) {
     userprog_exit (-1);
@@ -94,7 +94,7 @@ userprog_exec (const char *cmd_line)
 
 /* Wait on a child process to terminate and collect its exit status */
 static int
-userprog_wait (pid_t pid)
+user_wait (pid_t pid)
 {
   return process_wait (pid);
 }
@@ -102,7 +102,7 @@ userprog_wait (pid_t pid)
 /* Create a new file with initial_size bytes in size and return true
 * if successful, false otherwise */
 static bool
-userprog_create (const char *file, unsigned initial_size)
+user_create (const char *file, unsigned initial_size)
 {
   bool success;
 
@@ -120,7 +120,7 @@ userprog_create (const char *file, unsigned initial_size)
 /* Deletes the file called file, returns true if successful, false
 * otherwise */
 static bool
-userprog_remove (const char *file)
+user_remove (const char *file)
 {
   bool success;
 
@@ -137,7 +137,7 @@ userprog_remove (const char *file)
 
 /* Opens file file and returns the file descriptor */
 static int
-userprog_open (const char *file)
+user_open (const char *file)
 {
   if(!verify_pointer ((void *) file)) {
     userprog_exit (-1);
@@ -177,7 +177,7 @@ userprog_open (const char *file)
 
 /* Return length in number of bytes for file fd */
 static int
-userprog_filesize (int fd)
+user_filesize (int fd)
 {
   int num_bytes = 0;
   struct open_file *cur_file = getFile (fd);
@@ -196,7 +196,7 @@ userprog_filesize (int fd)
 /* Read a size number of bytes from the file with fd as the
 * file descriptor and save what has been read into buffer */
 static int
-userprog_read (int fd, void *buffer, unsigned size)
+user_read (int fd, void *buffer, unsigned size)
 {
   if (!verify_pointer(buffer)) {
     userprog_exit (-1);
@@ -231,7 +231,7 @@ userprog_read (int fd, void *buffer, unsigned size)
 
 /* Writes size bytes from buffer to the open file fd or to the console*/
 static int
-userprog_write (int fd, const void *buffer, unsigned size)
+user_write (int fd, const void *buffer, unsigned size)
 {
   if (!verify_pointer(buffer)) {
     userprog_exit (-1);
@@ -279,7 +279,7 @@ userprog_write (int fd, const void *buffer, unsigned size)
 /* Changes the next byte to be read or written in open file fd to
 * position, expressed in bytes from the beginning of the file */
 static void
-userprog_seek (int fd, unsigned position)
+user_seek (int fd, unsigned position)
 {
 	struct open_file *cur_file = getFile (fd);
   if (cur_file == NULL) {
@@ -293,7 +293,7 @@ userprog_seek (int fd, unsigned position)
 
 /* Returns the position of the next byte to be read/written in open file fd */
 static unsigned
-userprog_tell (int fd)
+user_tell (int fd)
 {
   unsigned position;
 	struct open_file *cur_file = getFile (fd);
@@ -311,7 +311,7 @@ userprog_tell (int fd)
 
 /* Closes the file fd and frees up allocated memory */
 static void
-userprog_close (int fd)
+user_close (int fd)
 {
 	struct open_file *cur_file = getFile (fd);
   if (cur_file == NULL) {
@@ -348,49 +348,49 @@ syscall_handler (struct intr_frame *f UNUSED)
 
   switch (syscall_num ) {
   	case SYS_HALT:
-  	  userprog_halt ();
+  	  user_halt ();
   	  break;
   	case SYS_EXIT:
   	{
   	  int status = *(((int *) esp) + 1);
-  	  userprog_exit (status);
+  	  user_exit (status);
   	  break;
   	}
   	case SYS_EXEC:
   	{
   	  const char *cmd_line = *(((char **) esp) + 1);
-  	  *eax = (uint32_t) userprog_exec (cmd_line);
+  	  *eax = (uint32_t) user_exec (cmd_line);
   	  break;
   	}
   	case SYS_WAIT:
   	{
   	  pid_t pid = *(((pid_t *) esp) + 1);
-  	  *eax = (uint32_t) userprog_wait (pid);
+  	  *eax = (uint32_t) user_wait (pid);
   	  break;
   	}
   	case SYS_CREATE:
   	{
   	  const char *file = *(((char **) esp) + 1);
   	  unsigned initial_size = *(((unsigned *) esp) + 2);
-  	  *eax = (uint32_t) userprog_create (file, initial_size);
+  	  *eax = (uint32_t) user_create (file, initial_size);
   	  break;
   	}
   	case SYS_REMOVE:
   	{
   	  const char *file = *(((char **) esp) + 1);
-  	  *eax = (uint32_t) userprog_remove (file);
+  	  *eax = (uint32_t) user_remove (file);
   	  break;
   	}
   	case SYS_OPEN:
   	{
   	  const char *file = *(((char **) esp) + 1);
-  	  *eax = (uint32_t) userprog_open (file);
+  	  *eax = (uint32_t) user_open (file);
   	  break;
   	}
   	case SYS_FILESIZE:
   	{
   	  int fd = *(((int *) esp) + 1);
-  	  *eax = (uint32_t) userprog_filesize (fd);
+  	  *eax = (uint32_t) user_filesize (fd);
   	  break;
   	}
   	case SYS_READ:
@@ -398,7 +398,7 @@ syscall_handler (struct intr_frame *f UNUSED)
   	  int fd = *(((int *) esp) + 1);
   	  void *buffer = (void *) *(((int **) esp) + 2);
   	  unsigned size = *(((unsigned *) esp) + 3);
-  	  *eax = (uint32_t) userprog_read (fd, buffer, size);
+  	  *eax = (uint32_t) user_read (fd, buffer, size);
   	  break;
   	}
   	case SYS_WRITE:
@@ -406,26 +406,26 @@ syscall_handler (struct intr_frame *f UNUSED)
   	  int fd = *(((int *) esp) + 1);
   	  const void *buffer = (void *) *(((int **) esp) + 2);
   	  unsigned size = *(((unsigned *) esp) + 3);
-  	  *eax = (uint32_t) userprog_write (fd, buffer, size);
+  	  *eax = (uint32_t) user_write (fd, buffer, size);
   	  break;
   	}
   	case SYS_SEEK:
   	{
   	  int fd = *(((int *) esp) + 1);
   	  unsigned position = *(((unsigned *) esp) + 2);
-  	  userprog_seek (fd, position);
+  	  user_seek (fd, position);
   	  break;
   	}
   	case SYS_TELL:
   	{
   	  int fd = *(((int *) esp) + 1);
-  	  *eax = (uint32_t) userprog_tell (fd);
+  	  *eax = (uint32_t) user_tell (fd);
   	  break;
   	}
   	case SYS_CLOSE:
   	{
       int fd = *(((int *) esp) + 1);
-  	  userprog_close (fd);
+  	  user_close (fd);
   	  break;
   	}
     default:
