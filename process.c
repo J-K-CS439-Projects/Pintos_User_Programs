@@ -22,10 +22,11 @@
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
-/* Look for the file with file descriptor fd in the thread's
+/* Juan Driving
+* Look for the file with file descriptor fd in the thread's
 * list of open files */
 static struct open_file *
-getFile (int fd)
+get_file (int fd)
 {
   struct thread *cur = thread_current ();
   
@@ -36,7 +37,8 @@ getFile (int fd)
   /* Traverse through thread's list of file */
   while(iterate != end) {
     /* Grab file struct and check its file descriptor */
-    struct open_file *cur_file = list_entry (iterate, struct open_file, file_elem);
+    struct open_file *cur_file = 
+                      list_entry (iterate, struct open_file, file_elem);
     if(cur_file->fd == fd) {
       return cur_file;
     }
@@ -45,7 +47,8 @@ getFile (int fd)
   return NULL;
 }
 
-/* Iterate through the current list of children to wait for them
+/* Juan Driving
+* Iterate through the current list of children to wait for them
 * to exit and then exit yourself */
 static void
 wait_on_children (struct thread *cur) {
@@ -56,9 +59,9 @@ wait_on_children (struct thread *cur) {
 
   while(iterate != end) {
 
-    child = list_entry (iterate, struct thread, childelem);
-    sema_down (&child->wait_sema);
-    sema_up (&child->exit_sema);
+    child = list_entry (iterate, struct thread, child_elem);
+    sema_down (&child->sema_wait);
+    sema_up (&child->sema_exit);
 
     iterate = list_next(iterate);
   }
@@ -90,13 +93,15 @@ process_execute (const char *file_name)
     return TID_ERROR;
   }
 
-  /* Creating a child was successful and now we retrieve the thread 
+  /* Keegan Driving
+  * Creating a child was successful and now we retrieve the thread 
   * to add it to the list of the thread's children list*/
   new_child = get_thread (tid);
-  list_push_back (&thread_current()->children, &new_child->childelem);
+  list_push_back (&thread_current()->children, &new_child->child_elem);
   
-  /* Wait and see if the child was successful in being loaded in */
-  sema_down (&new_child->load_sema);
+  /* Juan Driving
+  * Wait and see if the child was successful in being loaded in */
+  sema_down (&new_child->sema_load);
   if(!new_child->load_success){
     return TID_ERROR;
   }
@@ -124,14 +129,15 @@ start_process (void *file_name_)
   /* If load failed, quit and sema up to continue in process execute*/
   palloc_free_page (file_name);
   if (!success) {
-    sema_up (&cur->load_sema);
+    sema_up (&cur->sema_load);
     thread_exit ();
   }
 
-  /* If load was successful, then indicate that in the thread member
+  /* Juan Driving
+  * If load was successful, then indicate that in the thread member
   * and sema up on loading semaphore to continue in process execute */
   cur->load_success = 1;
-  sema_up (&cur->load_sema);
+  sema_up (&cur->sema_load);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -162,10 +168,11 @@ process_wait (tid_t child_tid UNUSED)
   struct list_elem *iterate = list_begin (&cur->children);
   struct list_elem *end = list_end (&cur->children);
 
-  /* Iterate through all the children of the current thread and
+  /* Juan Driving
+  * Iterate through all the children of the current thread and
   * find the child who we have to wait on */
   while(!found && iterate != end) {
-    child = list_entry (iterate, struct thread, childelem);
+    child = list_entry (iterate, struct thread, child_elem);
 
     if(child->tid == child_tid) {
       found = 1;
@@ -179,15 +186,16 @@ process_wait (tid_t child_tid UNUSED)
     return -1;
   }
 
-  /* Remove child from children list since it will no longer
+  /* Keegan Driving
+  * Remove child from children list since it will no longer
   * be on the thread's list after it has terminating */
-  list_remove (&child->childelem);
+  list_remove (&child->child_elem);
 
   /* Sema down on the wait semaphore and sema up on exit semaphore
   * to indicate the thread can exit */
-  sema_down (&child->wait_sema);
+  sema_down (&child->sema_wait);
   exit_status = child->exit_status;
-  sema_up (&child->exit_sema);
+  sema_up (&child->sema_exit);
 
   return exit_status;
 }
@@ -199,10 +207,9 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
-  /* If the thread has no command */
-  if(cur->cmd != NULL) {
-    printf("%s: exit(%d)\n", cur->cmd, cur->exit_status);
-  }
+  /* Keegan Driving
+  * Print process termination message */
+  printf("%s: exit(%d)\n", cur->command, cur->exit_status);
 
   /* Check if the lock is being held by the current thread
   * and release it if so since we will not use anymore*/
@@ -212,8 +219,9 @@ process_exit (void)
 
   /* Acquire the executable file and close it and afterwards
   * remove it from the list of files opened by the thread;
-  * 2 was the fd chosen because it represents a standard error output */
-  struct open_file *cur_file = getFile (2);
+  * start at 2 since 0 and 1 are reserved for the console and
+  * files begin to be added to a thread's list with 2 */
+  struct open_file *cur_file = get_file (2);
   lock_acquire (&file_lock);
   file_close (cur_file->file);
   lock_release (&file_lock);
@@ -222,14 +230,15 @@ process_exit (void)
   list_remove (&cur_file->file_elem);
   palloc_free_page (cur_file);
 
-  /* Sema up to notify a parent that is waiting that this thread has
+  /* Juan Driving
+  * Sema up to notify a parent that is waiting that this thread has
   * finished excetuting, ensure this thread's children have completed
   * executing, after just wait on parent to reap the thread */
-  sema_up (&cur->wait_sema);
+  sema_up (&cur->sema_wait);
   wait_on_children (cur);
-  sema_down (&cur->exit_sema);
+  sema_down (&cur->sema_exit);
 
-  palloc_free_page (cur->cmd);
+  palloc_free_page (cur->command);
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
@@ -348,7 +357,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   off_t file_ofs;
   bool success = false;
   int i;
-  char *save_ptr, *copy;
+  char *token, *save_ptr, *copy;
 
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
@@ -356,14 +365,18 @@ load (const char *file_name, void (**eip) (void), void **esp)
     goto done;
   process_activate ();
 
-  /* Make a copy of the user input */
+  /* Keegan Driving
+  * Make a copy of the user input and extract the first string */
   copy = palloc_get_page (0);
   if (copy == NULL)
     return TID_ERROR;
   strlcpy (copy, file_name, PGSIZE);
+  token = strtok_r (copy, " ", &save_ptr);
 
-  /* Extracting the first string, open the file */
-  file = filesys_open (strtok_r (copy, " ", &save_ptr));
+  /* Save the token to the command and open the file */
+  t->command = palloc_get_page (0);
+  strlcpy(t->command, token, strlen(token) + 1);
+  file = filesys_open (token);
 
   /* Allocate memory for the file to be opened */
   struct open_file *new_file = palloc_get_page (0);
@@ -383,7 +396,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
       goto done; 
     }
   
-  /* After we have confirmed that file is not NULL, we must
+  /* Juan Driving
+  * After we have confirmed that file is not NULL, we must
   * prevent any writing from happeing until allowed */
   file_deny_write (file);
 
@@ -595,7 +609,8 @@ setup_stack (void **esp, const char *file_name)
   char **arguments;
   int num_bytes = 0, index = 0, i;
 
-  /* Continue if arguments, the array of strings, can be allocated memory */
+  /* Juan Driving
+  * Continue if arguments, the array of strings, can be allocated memory */
   arguments = palloc_get_page(0); 
   if (arguments == NULL) {
   	return TID_ERROR; 
@@ -610,16 +625,11 @@ setup_stack (void **esp, const char *file_name)
 
   /* Iterate through the user arguments and save each string into arguments */
   token = strtok_r (copy, " ", &save_ptr);
-  /* Account for first token being the command */
-  if(token != NULL) {
-    thread_current()->cmd = palloc_get_page (0);
-    strlcpy(thread_current()->cmd, token, strlen(token)+1);
-  }
-  do {
+  while(token != NULL) {
     arguments[index] = token;
     index++;
     token = strtok_r (NULL, " ", &save_ptr);
-  } while(token != NULL);
+  }
 
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
@@ -628,7 +638,8 @@ setup_stack (void **esp, const char *file_name)
       if (success) {
         *esp = PHYS_BASE;
 
-        /* A char pointer to increase stack from PHYS_BASE */
+        /* Keegan Driving
+        * A char pointer to increase stack from PHYS_BASE */
         char *my_esp = (char *)*esp;
 
         /* push arguments onto the stack from right to left */
@@ -656,7 +667,8 @@ setup_stack (void **esp, const char *file_name)
         my_esp -= 4;
         *my_esp = 0;
 
-        /* Save each argument pointer to the stack */
+        /* Juan Driving
+        * Save each argument pointer to the stack */
         for (i = index; i >= 0; i--) {
           my_esp -= 4;
           *((int *)my_esp) = (unsigned)arguments[i];

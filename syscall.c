@@ -3,8 +3,6 @@
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
-
-//////////////////////////
 #include <string.h>
 #include "threads/vaddr.h"
 #include "threads/palloc.h"
@@ -14,7 +12,6 @@
 #include "userprog/process.h"
 #include "devices/shutdown.h"
 #include "devices/input.h"
-/////////////////////////////
 
 static void syscall_handler (struct intr_frame *);
 
@@ -26,7 +23,8 @@ syscall_init (void)
   lock_init (&file_lock);
 }
 
-/* Verifies if the pointer passed in is a valid pointer, a valid
+/* Keegan Driving
+* Verifies if the pointer passed in is a valid pointer, a valid
 * pointer is one that is not null, pointing to kernel virtual
 * address, and if the pointer is not mapped to a user address */
 static bool
@@ -42,21 +40,23 @@ verify_pointer (const void *pointer)
 	return true;
 }
 
-/* Look for the file with file descriptor fd in the thread's
+/* Juan Driving
+* Look for the file with file descriptor fd in the thread's
 * list of open files */
 static struct open_file *
-getFile (int fd)
+get_file (int fd)
 {
-  struct thread *t = thread_current ();
+  struct thread *cur = thread_current ();
   
   /* Iterating list element for file struct and last file list element */  
-  struct list_elem *iterate = list_begin(&t->file_list);
-  struct list_elem *end = list_end(&t->file_list);
+  struct list_elem *iterate = list_begin(&cur->file_list);
+  struct list_elem *end = list_end(&cur->file_list);
 
   /* Traverse through thread's list of file */
   while(iterate != end) {
     /* Grab file struct and check its file descriptor */
-    struct open_file *cur_file = list_entry (iterate, struct open_file, file_elem);
+    struct open_file *cur_file = 
+                      list_entry (iterate, struct open_file, file_elem);
     if(cur_file->fd == fd) {
       return cur_file;
     }
@@ -65,6 +65,7 @@ getFile (int fd)
   return NULL;
 }
 
+/* Juan Driving */
 static void
 user_halt ()
 {
@@ -80,13 +81,14 @@ user_exit (int status)
 	thread_exit ();
 }
 
-/* Runs the executable whose name is given in cmd_line, passing
+/* Keegan Driving
+* Runs the executable whose name is given in cmd_line, passing
 * any given arguments, and returns the new process's program id */
 static pid_t
 user_exec (const char *cmd_line)
 {
   if(!verify_pointer(cmd_line)) {
-    userprog_exit (-1);
+    user_exit (-1);
   }
 
   return process_execute (cmd_line);
@@ -107,7 +109,7 @@ user_create (const char *file, unsigned initial_size)
   bool success;
 
   if(!verify_pointer(file)) {
-    userprog_exit (-1);
+    user_exit (-1);
   }
 
   lock_acquire (&file_lock);
@@ -125,7 +127,7 @@ user_remove (const char *file)
   bool success;
 
   if(!verify_pointer(file)) {
-    userprog_exit (-1);
+    user_exit (-1);
   }
 
   lock_acquire (&file_lock);
@@ -135,12 +137,13 @@ user_remove (const char *file)
   return success;
 }
 
-/* Opens file file and returns the file descriptor */
+/* Juan Driving
+* Opens file file and returns the file descriptor */
 static int
 user_open (const char *file)
 {
   if(!verify_pointer ((void *) file)) {
-    userprog_exit (-1);
+    user_exit (-1);
   }
 
   struct thread *cur = thread_current ();
@@ -180,7 +183,7 @@ static int
 user_filesize (int fd)
 {
   int num_bytes = 0;
-  struct open_file *cur_file = getFile (fd);
+  struct open_file *cur_file = get_file (fd);
 
   if (cur_file == NULL){
     return num_bytes;
@@ -193,13 +196,14 @@ user_filesize (int fd)
   return num_bytes;
 }
 
-/* Read a size number of bytes from the file with fd as the
+/* Keegan Driving
+* Read a size number of bytes from the file with fd as the
 * file descriptor and save what has been read into buffer */
 static int
 user_read (int fd, void *buffer, unsigned size)
 {
   if (!verify_pointer(buffer)) {
-    userprog_exit (-1);
+    user_exit (-1);
   }
 
   int bytes_read = 0;
@@ -207,7 +211,7 @@ user_read (int fd, void *buffer, unsigned size)
 
   /* Get the file with fd and read the bytes */
   if(fd) {
-    cur_file = getFile (fd);
+    cur_file = get_file (fd);
     if (cur_file == NULL) {
       return -1;  
     }
@@ -229,12 +233,13 @@ user_read (int fd, void *buffer, unsigned size)
   return bytes_read;
 }
 
-/* Writes size bytes from buffer to the open file fd or to the console*/
+/* Juan Driving
+* Writes size bytes from buffer to the open file fd or to the console*/
 static int
 user_write (int fd, const void *buffer, unsigned size)
 {
   if (!verify_pointer(buffer)) {
-    userprog_exit (-1);
+    user_exit (-1);
   }
 
   int bytes_written = 0;
@@ -263,7 +268,7 @@ user_write (int fd, const void *buffer, unsigned size)
 
   /* Write to the file with fd as its descriptor */
   } else {
-    cur_file = getFile (fd);
+    cur_file = get_file (fd);
     if (cur_file == NULL) {
       return 0;
     }
@@ -276,12 +281,13 @@ user_write (int fd, const void *buffer, unsigned size)
   return bytes_written;
 }
 
-/* Changes the next byte to be read or written in open file fd to
+/* Keegan Driving
+* Changes the next byte to be read or written in open file fd to
 * position, expressed in bytes from the beginning of the file */
 static void
 user_seek (int fd, unsigned position)
 {
-	struct open_file *cur_file = getFile (fd);
+	struct open_file *cur_file = get_file (fd);
   if (cur_file == NULL) {
     return;
   }
@@ -296,7 +302,7 @@ static unsigned
 user_tell (int fd)
 {
   unsigned position;
-	struct open_file *cur_file = getFile (fd);
+	struct open_file *cur_file = get_file (fd);
 
   if (cur_file == NULL) {
     return 0;
@@ -313,7 +319,7 @@ user_tell (int fd)
 static void
 user_close (int fd)
 {
-	struct open_file *cur_file = getFile (fd);
+	struct open_file *cur_file = get_file (fd);
   if (cur_file == NULL) {
     return;
   }
@@ -329,7 +335,8 @@ user_close (int fd)
 static void
 syscall_handler (struct intr_frame *f UNUSED) 
 {
-  /* esp in the intr_frame will point to a number indicating the what
+  /* Keegan Driving
+  * esp in the intr_frame will point to a number indicating the what
 	* handler will be called */
   void *esp = f->esp;
 
@@ -340,12 +347,14 @@ syscall_handler (struct intr_frame *f UNUSED)
   int *pointer = (int *) esp;
   if(!verify_pointer (pointer) || !verify_pointer (pointer + 1) || 
       !verify_pointer (pointer + 2)) {
-    userprog_exit (-1);
+    user_exit (-1);
   }
 
-  /* Retrieve the system call number */
+  /* Juan Driving
+  * Retrieve the system call number */
   int syscall_num = *((int *) esp);
 
+  /* Juan and Keegan go back and forth randomly here */
   switch (syscall_num ) {
   	case SYS_HALT:
   	  user_halt ();

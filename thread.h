@@ -7,7 +7,9 @@
 #include "filesys/file.h"
 #include "threads/synch.h"
 
-/* Struct for content of a file opened by a thread,
+
+/* Juan Driving
+* Struct for content of a file opened by a thread,
 * idea given credit to Piazza post @723 */
 struct open_file {
    struct file *file;
@@ -102,20 +104,21 @@ struct thread
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
 
-    /* Added for Project 2 */
+    /* Keegan Driving
+    * Added for Project 2 */
     int exit_status;                    /* Exit status for parent to obtain */
 
     struct list children;               /* List of thread's child processes */
-    struct list_elem childelem;         /* List element for children list */
+    struct list_elem child_elem;         /* List element for children list */
 
-    struct semaphore wait_sema;         /* To synchronize wait for a child */
-    struct semaphore exit_sema;         /* To synchronize a process exiting */
+    struct semaphore sema_wait;         /* To synchronize wait for a child */
+    struct semaphore sema_exit;         /* To synchronize a process exiting */
 
     struct list file_list;              /* List of files thread currently open */
     int next_fd;                        /* The file descriptor for a new file */
 
-    char *cmd;                          /* The command the thread has to run */
-    struct semaphore load_sema;         /* To synchronize for the execution */
+    char *command;                          /* The command the thread has to run */
+    struct semaphore sema_load;         /* To synchronize for the execution */
     int load_success;                   /* Verifies if executable loaded */
 
     /* Shared between thread.c and synch.c. */

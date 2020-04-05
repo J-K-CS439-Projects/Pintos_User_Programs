@@ -4,7 +4,8 @@
 /* Declare pid_t here to avoid error */
 typedef int pid_t;
 
-/* A global lock in to protect syscall functions, 
+/* Juan Driving
+* A global lock in to protect syscall functions, 
 * idea given credit to Piazza post @704 */
 struct lock file_lock;
 

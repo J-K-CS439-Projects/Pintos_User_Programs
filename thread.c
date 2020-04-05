@@ -71,8 +71,9 @@ static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 
-/* Returns a thread with the corresponding tid.
-   Returns NULL if no such thread exists. */
+/* Keegan Driving
+* Returns a thread with the corresponding tid and return
+* NULL if no thread was found */
 struct thread *
 get_thread (tid_t tid)
 {
@@ -496,19 +497,20 @@ init_thread (struct thread *t, const char *name, int priority)
   list_push_back (&all_list, &t->allelem);
   intr_set_level(old_level);
 
-  /* Added content for project 2 */
+  /* Juan Driving
+  * Added content for Project 2 */
   t->exit_status = -1;
 
   list_init (&t->children);
 
-  sema_init (&t->wait_sema, 0);
-  sema_init (&t->exit_sema, 0);
+  sema_init (&t->sema_wait, 0);
+  sema_init (&t->sema_exit, 0);
   
   list_init (&t->file_list);
   t->next_fd = 2;
 
-  t->cmd = NULL;
-  sema_init (&t->load_sema, 0);
+  t->command = NULL;
+  sema_init (&t->sema_load, 0);
   t->load_success = 0;
 }
 

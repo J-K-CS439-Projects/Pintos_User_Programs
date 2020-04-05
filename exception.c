@@ -13,7 +13,8 @@ static long long page_fault_cnt;
 static void kill (struct intr_frame *);
 static void page_fault (struct intr_frame *);
 
-/* Verifies if the pointer passed in is a valid pointer, a valid
+/* Keegan Driving
+* Verifies if the pointer passed in is a valid pointer, a valid
 * pointer is one that is not null, pointing to kernel virtual
 * address, and if the pointer is not mapped to a user address */
 static bool
@@ -154,7 +155,8 @@ page_fault (struct intr_frame *f)
      (#PF)". */
   asm ("movl %%cr2, %0" : "=r" (fault_addr));
 
-  /* After obtaining the fault address, we have to verify the address
+  /* Keegan Driving
+  * After obtaining the fault address, we have to verify the address
   * help was brought in office hours */
   if(!verify_pointer(fault_addr))
     thread_exit();
